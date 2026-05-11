@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Council — Multi-Agent Decision Framework for Claude Code</title>
+  <meta name="description" content="A structured decision-making system using 7 specialist AI agents that each analyse a question from a distinct perspective." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #58a6ff;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --yellow:   #d29922;
+      --blue:     #58a6ff;
+      --purple:   #bc8cff;
+      --white:    #e6edf3;
+      --brown:    #c9a04a;
+      --radius:   8px;
+      --max:      860px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ── */
+    header, main, footer {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ── */
+    header {
+      padding-top: 64px;
+      padding-bottom: 48px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .tagline {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 32px;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+
+    .btn-secondary {
+      background: #21262d;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Sections ── */
+    section { margin-bottom: 72px; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── How it works ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .step h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .step p  { font-size: 14px; color: var(--muted); }
+
+    /* ── Agents table ── */
+    .agents {
+      display: grid;
+      gap: 10px;
+    }
+
+    .agent {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+    }
+
+    .agent-icon { font-size: 20px; text-align: center; }
+
+    .agent-name  { font-weight: 600; font-size: 15px; }
+    .agent-desc  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .agent-q {
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 560px) {
+      .agent { grid-template-columns: 28px 1fr; }
+      .agent-q { display: none; }
+    }
+
+    /* ── Code blocks ── */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .code-label {
+      background: #21262d;
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    code { font-family: inherit; }
+
+    .comment { color: var(--muted); }
+    .cmd     { color: var(--green); }
+    .str     { color: #a5d6ff; }
+    .kw      { color: var(--purple); }
+
+    /* ── Output preview ── */
+    .output-preview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .output-preview h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .output-preview .question {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .vote-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
+    .vote-table th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .vote-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .vote { font-weight: 600; }
+    .vote-proceed            { color: var(--green); }
+    .vote-conditions         { color: var(--yellow); }
+    .vote-do-not-proceed     { color: var(--red); }
+
+    .conf-high   { color: var(--green); }
+    .conf-medium { color: var(--yellow); }
+    .conf-low    { color: var(--red); }
+
+    .recommendation {
+      background: #0d2818;
+      border: 1px solid #1a4a2e;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .recommendation .label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .recommendation .verdict {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+    .recommendation p { font-size: 14px; color: var(--muted); }
+
+    /* ── Install tabs ── */
+    .tab-row {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 8px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+
+    .tab.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Tips ── */
+    .tips { display: grid; gap: 10px; }
+
+    .tip {
+      display: flex;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 14px;
+    }
+
+    .tip-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .tip-text { color: var(--muted); }
+    .tip-text strong { color: var(--text); }
+
+    /* ── Footer ── */
+    footer {
+      padding-top: 32px;
+      padding-bottom: 48px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Claude Code · Sub-agents · Slash commands</div>
+  <h1>Meet the <span>Council</span></h1>
+  <p class="tagline">Seven specialist AI agents that each analyse your decision from a distinct perspective — then synthesise into a single verdict.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/stumacmar/council">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+    <a class="btn btn-secondary" href="#install">Get started</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- How it works -->
+  <section>
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Ask a question</h3>
+        <p>Type <code>/council</code> followed by any decision in Claude Code.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>7 agents analyse in parallel</h3>
+        <p>Each specialist examines the question from their distinct perspective simultaneously.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Agents write to a shared file</h3>
+        <p>Every agent appends their analysis to <code>shared_reasoning.md</code> with a vote.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Council is synthesised</h3>
+        <p>A vote table, consensus map, and final <strong>PROCEED / DO NOT PROCEED</strong> verdict are produced.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- The agents -->
+  <section>
+    <h2>The agents</h2>
+    <div class="agents">
+      <div class="agent">
+        <div class="agent-icon">🟢</div>
+        <div>
+          <div class="agent-name">Optimist</div>
+          <div class="agent-desc">Identifies opportunities, upside scenarios, and favourable conditions.</div>
+        </div>
+        <div class="agent-q">What could go RIGHT?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">🔴</div>
+        <div>
+          <div class="agent-name">Devil's Advocate</div>
+          <div class="agent-desc">Stress-tests assumptions, surfaces failure modes and hidden risks.</div>
+        </div>
+        <div class="agent-q">What could go WRONG?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">🟡</div>
+        <div>
+          <div class="agent-name">Realist</div>
+          <div class="agent-desc">Assesses practical feasibility — resources, timelines, and blockers.</div>
+        </div>
+        <div class="agent-q">Is this actually FEASIBLE?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">🔵</div>
+        <div>
+          <div class="agent-name">Strategist</div>
+          <div class="agent-desc">Evaluates timing, opportunity cost, and strategic direction.</div>
+        </div>
+        <div class="agent-q">Is this the right move NOW?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">🟣</div>
+        <div>
+          <div class="agent-name">Stakeholder Advocate</div>
+          <div class="agent-desc">Maps who is affected and gives voice to those not in the room.</div>
+        </div>
+        <div class="agent-q">Who is AFFECTED and how?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">⚪</div>
+        <div>
+          <div class="agent-name">First Principles</div>
+          <div class="agent-desc">Strips back to fundamentals and challenges the framing of the question.</div>
+        </div>
+        <div class="agent-q">Are we asking the RIGHT QUESTION?</div>
+      </div>
+      <div class="agent">
+        <div class="agent-icon">📚</div>
+        <div>
+          <div class="agent-name">Historian</div>
+          <div class="agent-desc">Brings precedents, patterns, and lessons from similar past decisions.</div>
+        </div>
+        <div class="agent-q">Has this been tried BEFORE?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Usage -->
+  <section>
+    <h2>Usage</h2>
+    <div class="code-block">
+      <div class="code-label">Full council — all 7 agents</div>
+      <pre><code><span class="comment"># Major decisions — board, property, finance, restructuring</span>
+<span class="cmd">/council</span> <span class="str">Should we restructure the finance function before the audit?</span>
+<span class="cmd">/council</span> <span class="str">Is this the right time to make an offer on the Hexham property?</span>
+<span class="cmd">/council</span> <span class="str">Should we proceed with the France motorhome trip in July given the budget position?</span></code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-label">Quick council — 3 agents, faster</div>
+      <pre><code><span class="comment"># Lower-stakes or time-sensitive decisions</span>
+<span class="cmd">/council-quick</span> <span class="str">Should I upgrade the Bürstner's bike rack before the trip?</span>
+<span class="cmd">/council-quick</span> <span class="str">Which campervan insurance provider should I renew with?</span></code></pre>
+    </div>
+  </section>
+
+  <!-- Output preview -->
+  <section>
+    <h2>Example output</h2>
+    <div class="output-preview">
+      <h3>Council Decision Analysis</h3>
+      <div class="question">Question: Should we restructure the finance function before the audit?</div>
+
+      <table class="vote-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Vote</th>
+            <th>Confidence</th>
+            <th>Key point</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🟢 Optimist</td>
+            <td><span class="vote vote-proceed">PROCEED</span></td>
+            <td><span class="conf-medium">Medium</span></td>
+            <td style="color:var(--muted);font-size:13px;">Clean structure signals maturity to auditors</td>
+          </tr>
+          <tr>
+            <td>🔴 Devil's Advocate</td>
+            <td><span class="vote vote-do-not-proceed">DO NOT PROCEED</span></td>
+            <td><span class="conf-high">High</span></td>
+            <td style="color:var(--muted);font-size:13px;">Restructuring mid-audit creates process gaps</td>
+          </tr>
+          <tr>
+            <td>🟡 Realist</td>
+            <td><span class="vote vote-conditions">PROCEED WITH CONDITIONS</span></td>
+            <td><span class="conf-high">High</span></td>
+            <td style="color:var(--muted);font-size:13px;">6–8 weeks minimum; not enough runway before Q3</td>
+          </tr>
+          <tr>
+            <td>🔵 Strategist</td>
+            <td><span class="vote vote-conditions">PROCEED WITH CONDITIONS</span></td>
+            <td><span class="conf-medium">Medium</span></td>
+            <td style="color:var(--muted);font-size:13px;">Right direction, wrong timing — defer to post-audit</td>
+          </tr>
+          <tr>
+            <td>🟣 Stakeholder Advocate</td>
+            <td><span class="vote vote-do-not-proceed">DO NOT PROCEED</span></td>
+            <td><span class="conf-high">High</span></td>
+            <td style="color:var(--muted);font-size:13px;">Finance team uncertainty will harm audit cooperation</td>
+          </tr>
+          <tr>
+            <td>⚪ First Principles</td>
+            <td><span class="vote vote-conditions">PROCEED WITH CONDITIONS</span></td>
+            <td><span class="conf-medium">Medium</span></td>
+            <td style="color:var(--muted);font-size:13px;">Real question is whether the restructure is decided — not when to announce</td>
+          </tr>
+          <tr>
+            <td>📚 Historian</td>
+            <td><span class="vote vote-do-not-proceed">DO NOT PROCEED</span></td>
+            <td><span class="conf-high">High</span></td>
+            <td style="color:var(--muted);font-size:13px;">Pre-audit restructures consistently increase audit scope</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="recommendation">
+        <div class="label">Final recommendation</div>
+        <div class="verdict">PROCEED WITH CONDITIONS</div>
+        <p>Defer the restructure until after the audit completes. Lock the decision and communicate intent internally now to retain key staff, but hold implementation until Q4. Three of seven agents voted Do Not Proceed on timing grounds; the council agrees the restructure is directionally correct but the timing creates unnecessary risk.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section id="install">
+    <h2>Get started</h2>
+
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab('project')">Per project</div>
+      <div class="tab" onclick="switchTab('global')">Global</div>
+    </div>
+
+    <div id="tab-project" class="tab-content active">
+      <div class="code-block">
+        <div class="code-label">Terminal</div>
+        <pre><code><span class="comment"># Clone Council</span>
+<span class="kw">git</span> clone https://github.com/stumacmar/council.git
+
+<span class="comment"># Copy .claude/ into your project</span>
+<span class="kw">cp</span> -r council/.claude /path/to/your-project/</code></pre>
+      </div>
+      <p style="font-size:14px;color:var(--muted);">Claude Code discovers agents and commands automatically when you run it from the project directory.</p>
+    </div>
+
+    <div id="tab-global" class="tab-content">
+      <div class="code-block">
+        <div class="code-label">Terminal</div>
+        <pre><code><span class="comment"># Clone Council</span>
+<span class="kw">git</span> clone https://github.com/stumacmar/council.git
+
+<span class="comment"># Install globally — available in every project</span>
+<span class="kw">mkdir</span> -p ~/.claude/agents ~/.claude/commands
+<span class="kw">cp</span> council/.claude/agents/* ~/.claude/agents/
+<span class="kw">cp</span> council/.claude/commands/* ~/.claude/commands/</code></pre>
+      </div>
+      <p style="font-size:14px;color:var(--muted);">Global install makes <code>/council</code> available in every Claude Code session on your machine.</p>
+    </div>
+  </section>
+
+  <!-- Tips -->
+  <section>
+    <h2>Tips</h2>
+    <div class="tips">
+      <div class="tip">
+        <div class="tip-icon">📁</div>
+        <div class="tip-text"><strong>Build a decision log.</strong> Save each <code>shared_reasoning.md</code> to a <code>/decisions/</code> folder as an audit trail — invaluable for board reviews and post-mortems.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">⚡</div>
+        <div class="tip-text"><strong>Agents run in parallel.</strong> A full seven-agent council takes roughly the same time as a single agent response — don't save <code>/council-quick</code> for time reasons alone.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">🎯</div>
+        <div class="tip-text"><strong>Strategist + First Principles</strong> are the most valuable pair for board-level decisions. Stakeholder Advocate is critical for anything involving organisational change.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">📱</div>
+        <div class="tip-text"><strong>On mobile,</strong> create a Claude Project with the council prompt in its instructions — you get the same structured output without needing Claude Code.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">🔍</div>
+        <div class="tip-text"><strong>Need just one view?</strong> Invoke any agent directly via Claude Code's Task tool — e.g. ask the Historian alone when you need a precedent check without the full council.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>Council — Multi-Agent Decision Framework for Claude Code</span>
+  <span>
+    <a href="https://github.com/stumacmar/council">GitHub</a>
+  </span>
+</footer>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelector('[onclick="switchTab(\'' + name + '\')"]').classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+</script>
+
+</body>
+</html>
