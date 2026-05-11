@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Council — Ask a question</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --red:     #f85149;
+      --yellow:  #d29922;
+      --purple:  #bc8cff;
+      --radius:  8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100dvh;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-back {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-back:hover { color: var(--text); }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px 20px 80px;
+    }
+
+    #setup-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    #setup-panel.collapsed { padding: 12px 20px; }
+
+    .setup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .setup-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setup-status {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .status-set   { background: #0d2818; color: var(--green); border: 1px solid #1a4a2e; }
+    .status-unset { background: #2d1a1a; color: var(--red);   border: 1px solid #4a1a1a; }
+
+    .setup-toggle { font-size: 12px; color: var(--muted); }
+
+    .setup-body { margin-top: 16px; }
+    .setup-body.hidden { display: none; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="password"], input[type="text"], select, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+    select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238b949e' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .row { display: flex; gap: 10px; }
+    .row .field { flex: 1; }
+
+    .btn-save {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--radius);
+      padding: 9px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: opacity 0.15s;
+    }
+    .btn-save:hover { opacity: 0.85; }
+
+    .api-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .api-note a { color: var(--accent); }
+
+    .input-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .mode-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .mode-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    .mode-desc {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 8px 16px;
+      background: #0d1117;
+      border-bottom: 1px solid var(--border);
+    }
+
+    textarea#question {
+      border: none;
+      border-radius: 0;
+      resize: none;
+      min-height: 120px;
+      font-size: 16px;
+      padding: 16px;
+      line-height: 1.5;
+    }
+    textarea#question:focus { border-color: transparent; }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .char-count { font-size: 12px; color: var(--muted); }
+
+    .btn-run {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--radius);
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.15s;
+    }
+    .btn-run:hover:not(:disabled) { opacity: 0.85; }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(13,17,23,0.3);
+      border-top-color: #0d1117;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #output-wrap { display: none; }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .output-label { font-size: 13px; color: var(--muted); }
+
+    .output-actions { display: flex; gap: 8px; }
+
+    .btn-copy, .btn-clear {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .btn-copy:hover, .btn-clear:hover { border-color: var(--accent); }
+
+    #output {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    #output h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 16px 0 8px;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      background: #0d2818;
+      border: 1px solid #1a4a2e;
+      color: var(--green);
+    }
+
+    #output h2 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 28px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    #output h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 16px 0 8px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    #output p { margin-bottom: 12px; font-size: 15px; }
+
+    #output ul, #output ol { margin: 8px 0 12px 20px; }
+    #output li { margin-bottom: 4px; font-size: 15px; }
+    #output strong { color: var(--text); font-weight: 600; }
+    #output em { color: var(--muted); }
+
+    #output code {
+      background: #21262d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 13px;
+    }
+
+    #output hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    #output table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 12px 0 16px;
+      display: block;
+      overflow-x: auto;
+    }
+
+    #output th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    #output td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+      vertical-align: top;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .error-box {
+      background: #2d1a1a;
+      border: 1px solid #4a1a1a;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      color: var(--red);
+      font-size: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">⚖ Council</a>
+  <a class="nav-back" href="index.html">← About</a>
+</nav>
+
+<div class="container">
+
+  <div class="error-box" id="error-box"></div>
+
+  <div id="setup-panel">
+    <div class="setup-header" onclick="toggleSetup()">
+      <div class="setup-title">
+        API setup
+        <span class="setup-status" id="setup-status">Not configured</span>
+      </div>
+      <span class="setup-toggle" id="setup-toggle">▲ Hide</span>
+    </div>
+    <div class="setup-body" id="setup-body">
+      <div class="row" style="margin-top:16px">
+        <div class="field">
+          <label for="api-key">Anthropic API key</label>
+          <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field" style="max-width:200px">
+          <label for="model">Model</label>
+          <select id="model">
+            <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+            <option value="claude-opus-4-7">Opus 4.7 (best)</option>
+            <option value="claude-haiku-4-5-20251001">Haiku 4.5 (fast)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveSettings()">Save</button>
+      <p class="api-note">Your key is stored only in this browser — never sent anywhere except Anthropic's API. Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="mode-tabs">
+      <div class="mode-tab active" id="tab-full" onclick="setMode('full')">/council — Full (7 agents)</div>
+      <div class="mode-tab" id="tab-quick" onclick="setMode('quick')">/council-quick — Fast (3 agents)</div>
+    </div>
+    <div class="mode-desc" id="mode-desc">All 7 specialists in parallel. Best for important decisions.</div>
+    <textarea id="question" placeholder="What decision do you need the council to analyse?" oninput="updateCharCount()" onkeydown="handleKey(event)"></textarea>
+    <div class="input-footer">
+      <span class="char-count" id="char-count">0 characters</span>
+      <button class="btn-run" id="btn-run" onclick="runCouncil()" disabled>
+        <span id="btn-label">Convene council</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="output-wrap">
+    <div class="output-header">
+      <span class="output-label" id="output-label">Council analysis</span>
+      <div class="output-actions">
+        <button class="btn-copy" onclick="copyOutput()">Copy</button>
+        <button class="btn-clear" onclick="clearOutput()">Clear</button>
+      </div>
+    </div>
+    <div id="output"></div>
+  </div>
+
+</div>
+
+<script>
+const FULL_PROMPT = `You are the Council — a structured 7-agent decision-making system. When given a question or decision, analyse it carefully through all seven specialist perspectives, then synthesise a verdict.
+
+Be genuinely analytical. Each agent should give real, substantive analysis — not surface-level platitudes.
+
+Use this exact structure:
+
+---
+
+## 🟢 Optimist — What could go RIGHT?
+
+**Stance:** [one sentence summary]
+
+**Best-case outcome:** [1–2 sentences on the ideal scenario if this goes well]
+
+**Key upsides:**
+- [upside with brief explanation]
+- [upside]
+- [upside — add more if distinct]
+
+**Favourable conditions:**
+- [condition or tailwind making success more likely]
+
+**Positive second-order effects:**
+- [what else improves if this succeeds]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🔴 Devil's Advocate — What could go WRONG?
+
+**Stance:** [one sentence]
+
+**Most likely failure mode:** [1–2 sentences on the most probable bad outcome]
+
+**Key risks:**
+- [risk — likelihood: High/Medium/Low]
+- [risk]
+- [risk]
+
+**Hidden assumptions:**
+- [assumption baked into the decision — what if it's wrong?]
+
+**Irreversible or hard-to-recover downsides:**
+- [downside]
+
+**The uncomfortable truth:**
+[1–2 sentences on what people are probably not saying aloud]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🟡 Realist — Is this actually FEASIBLE?
+
+**Stance:** [one sentence]
+
+**Feasibility rating:** Fully feasible / Feasible with adjustments / Marginal / Not currently feasible
+
+**Resource requirements:**
+- Time: [estimate]
+- Cost/financial: [estimate or flag if unknown]
+- People/skills: [what's needed]
+
+**Practical blockers:**
+- [blocker]
+
+**Realistic timeline:** [vs what's probably assumed]
+
+**Minimum viable version:**
+[Smallest version of this that could work if full execution isn't possible]
+
+**What would need to be true:**
+- [condition for this to be feasible]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🔵 Strategist — Is this the right move NOW?
+
+**Stance:** [one sentence]
+
+**Strategic alignment:** Yes / Partially / No
+
+**Timing verdict:** Right time / Premature / Overdue / Wrong time entirely
+
+**Why now (or why not now):**
+- [reason]
+
+**Opportunity cost:**
+[What are you not doing if you do this? Is that acceptable?]
+
+**Options this opens:** [bullets]
+**Options this closes:** [bullets]
+
+**Reversibility:** Easily reversible / Reversible with cost / Largely irreversible
+
+**The do-nothing option:**
+[What happens if you delay or don't decide? Better or worse than acting?]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🟣 Stakeholder Advocate — Who is AFFECTED?
+
+**Stance:** [one sentence]
+
+**Stakeholder map:**
+
+| Stakeholder | Interest / concern | If PROCEED | If DON'T PROCEED |
+|---|---|---|---|
+| [group] | [stake] | [impact] | [impact] |
+| [group] | [stake] | [impact] | [impact] |
+
+**Who benefits most:** [...]
+**Who bears the greatest cost or risk:** [...]
+
+**Missing voices:**
+- [stakeholder absent from this decision whose perspective matters]
+
+**Fairness and ethical concerns:**
+- [concern, or "None identified"]
+
+**Relationship and trust implications:**
+[How does this affect key relationships?]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## ⚪ First Principles — Right QUESTION?
+
+**Stance:** [one sentence on whether the question is well-framed]
+
+**The real underlying question:**
+[Restate what this is actually about at its core]
+
+**Embedded assumptions:**
+- [assumption in the framing — is it valid?]
+- [assumption]
+
+**Fixed constraints that might not be fixed:**
+- [constraint assumed immovable — could it change?]
+
+**Simpler path to the underlying goal:**
+[Is there a more direct route that isn't being considered?]
+
+**The core trade-off:**
+[Fundamental tension at the heart of this, stated plainly]
+
+**Starting from scratch:**
+[What would the decision look like with no sunk costs or prior commitments?]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 📚 Historian — Done BEFORE?
+
+**Stance:** [one sentence on what history suggests]
+
+**Comparable precedents:**
+- [precedent — what happened, what to learn]
+
+**Analogous situations (different domain, similar structure):**
+- [analogy — where the comparison holds and where it breaks]
+
+**Recognisable patterns:**
+- [pattern — e.g. "classic sunk cost situation", "second-mover advantage"]
+
+**What history says:**
+[2–3 sentences synthesising the overall historical signal]
+
+**Key lessons:**
+- [lesson directly applicable to this decision]
+
+**Historical red flags:**
+- [thing that has gone wrong before in similar situations, or "None identified"]
+
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## Council Synthesis
+
+### Votes at a glance
+
+| Agent | Vote | Confidence | Key point |
+|---|---|---|---|
+| 🟢 Optimist | [vote] | [conf] | [one-line key point] |
+| 🔴 Devil's Advocate | [vote] | [conf] | [one-line key point] |
+| 🟡 Realist | [vote] | [conf] | [one-line key point] |
+| 🔵 Strategist | [vote] | [conf] | [one-line key point] |
+| 🟣 Stakeholder Advocate | [vote] | [conf] | [one-line key point] |
+| ⚪ First Principles | [vote] | [conf] | [one-line key point] |
+| 📚 Historian | [vote] | [conf] | [one-line key point] |
+
+**Tally:** PROCEED: n · PROCEED WITH CONDITIONS: n · DO NOT PROCEED: n
+
+### Where the council agrees
+- [point of consensus]
+
+### Where the council disagrees
+- [point of divergence — which agents on each side]
+
+### Open questions to resolve
+- [question that needs answering before deciding]
+
+### Conditions that would change the verdict
+- [what would need to be true to shift from current recommendation]
+
+---
+
+## Final Recommendation
+
+# PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED
+
+[2–3 sentences integrating the strongest arguments from across the council. If PROCEED WITH CONDITIONS, list conditions clearly.]`;
+
+const QUICK_PROMPT = `You are the Council — a structured decision-making system. Analyse the given question through three specialist lenses (Optimist, Devil's Advocate, Realist), then synthesise a quick verdict.
+
+Be genuinely analytical. Each agent gives real, substantive analysis.
+
+Use this exact structure:
+
+---
+
+## 🟢 Optimist — What could go RIGHT?
+
+**Stance:** [one sentence]
+**Best-case outcome:** [1–2 sentences]
+**Key upsides:** [3+ bullets]
+**Favourable conditions:** [bullets]
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🔴 Devil's Advocate — What could go WRONG?
+
+**Stance:** [one sentence]
+**Most likely failure mode:** [1–2 sentences]
+**Key risks:** [3+ bullets with likelihood]
+**Hidden assumptions:** [bullets]
+**The uncomfortable truth:** [1–2 sentences]
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## 🟡 Realist — Is this actually FEASIBLE?
+
+**Stance:** [one sentence]
+**Feasibility rating:** Fully feasible / Feasible with adjustments / Marginal / Not currently feasible
+**Resource requirements:** [Time / Cost / People as bullets]
+**Practical blockers:** [bullets]
+**Minimum viable version:** [one sentence]
+**Vote:** PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED | **Confidence:** High / Medium / Low
+
+---
+
+## Council Synthesis
+
+### Votes at a glance
+
+| Agent | Vote | Confidence | Key point |
+|---|---|---|---|
+| 🟢 Optimist | [vote] | [conf] | [key point] |
+| 🔴 Devil's Advocate | [vote] | [conf] | [key point] |
+| 🟡 Realist | [vote] | [conf] | [key point] |
+
+**Tally:** PROCEED: n · PROCEED WITH CONDITIONS: n · DO NOT PROCEED: n
+
+### Key tensions
+- [main point of agreement or disagreement]
+
+### Open questions
+- [question to resolve before deciding]
+
+---
+
+## Final Recommendation
+
+# PROCEED / PROCEED WITH CONDITIONS / DO NOT PROCEED
+
+[2–3 sentences. If PROCEED WITH CONDITIONS, list them.]
+
+---
+
+*For deeper analysis including strategic, stakeholder, historical, and first-principles perspectives, use the full /council.*`;
+
+let mode = 'full';
+let isRunning = false;
+let rawText = '';
+
+const MODE_DESC = {
+  full: 'All 7 specialists in parallel. Best for important decisions.',
+  quick: "Optimist, Devil's Advocate, and Realist only. Faster for everyday choices."
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const savedKey = localStorage.getItem('council_api_key') || '';
+  const savedModel = localStorage.getItem('council_model') || 'claude-sonnet-4-6';
+  document.getElementById('api-key').value = savedKey;
+  document.getElementById('model').value = savedModel;
+  updateSetupStatus();
+  if (savedKey) collapseSetup();
+  document.getElementById('question').addEventListener('input', () => {
+    const hasKey = !!localStorage.getItem('council_api_key');
+    const hasQuestion = document.getElementById('question').value.trim().length > 0;
+    document.getElementById('btn-run').disabled = !(hasKey && hasQuestion);
+  });
+});
+
+function saveSettings() {
+  const key = document.getElementById('api-key').value.trim();
+  const model = document.getElementById('model').value;
+  if (!key) { showError('Please enter your Anthropic API key.'); return; }
+  if (!key.startsWith('sk-ant-')) { showError("That doesn't look like an Anthropic API key (should start with sk-ant-)."); return; }
+  localStorage.setItem('council_api_key', key);
+  localStorage.setItem('council_model', model);
+  updateSetupStatus();
+  collapseSetup();
+  hideError();
+  const q = document.getElementById('question').value.trim();
+  document.getElementById('btn-run').disabled = !q;
+}
+
+function updateSetupStatus() {
+  const key = localStorage.getItem('council_api_key');
+  const model = localStorage.getItem('council_model') || 'claude-sonnet-4-6';
+  const el = document.getElementById('setup-status');
+  if (key) {
+    el.textContent = model.replace('claude-', '').replace('-20251001', '');
+    el.className = 'setup-status status-set';
+  } else {
+    el.textContent = 'Not configured';
+    el.className = 'setup-status status-unset';
+  }
+}
+
+let setupOpen = true;
+function toggleSetup() { setupOpen ? collapseSetup() : expandSetup(); }
+function collapseSetup() {
+  document.getElementById('setup-body').classList.add('hidden');
+  document.getElementById('setup-toggle').textContent = '▼ Show';
+  document.getElementById('setup-panel').classList.add('collapsed');
+  setupOpen = false;
+}
+function expandSetup() {
+  document.getElementById('setup-body').classList.remove('hidden');
+  document.getElementById('setup-toggle').textContent = '▲ Hide';
+  document.getElementById('setup-panel').classList.remove('collapsed');
+  setupOpen = true;
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('tab-full').classList.toggle('active', m === 'full');
+  document.getElementById('tab-quick').classList.toggle('active', m === 'quick');
+  document.getElementById('mode-desc').textContent = MODE_DESC[m];
+}
+
+function updateCharCount() {
+  const len = document.getElementById('question').value.length;
+  document.getElementById('char-count').textContent = `${len} character${len !== 1 ? 's' : ''}`;
+  const hasKey = !!localStorage.getItem('council_api_key');
+  document.getElementById('btn-run').disabled = !(hasKey && len > 0);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    if (!document.getElementById('btn-run').disabled) runCouncil();
+  }
+}
+
+function showOutput() { document.getElementById('output-wrap').style.display = 'block'; }
+function renderOutput(text, streaming) {
+  const el = document.getElementById('output');
+  el.innerHTML = marked.parse(text || '') + (streaming ? '<span class="cursor"></span>' : '');
+}
+function copyOutput() {
+  navigator.clipboard.writeText(rawText).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+function clearOutput() {
+  rawText = '';
+  document.getElementById('output-wrap').style.display = 'none';
+  document.getElementById('output').innerHTML = '';
+}
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() { document.getElementById('error-box').style.display = 'none'; }
+
+async function* streamMessages(question, systemPrompt, apiKey, model) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8000,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: question }]
+    })
+  });
+  if (!res.ok) {
+    let msg = `API error ${res.status}`;
+    try { const err = await res.json(); msg = err.error?.message || msg; } catch (_) {}
+    throw new Error(msg);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data) continue;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') yield parsed.delta.text;
+      } catch (_) {}
+    }
+  }
+}
+
+async function runCouncil() {
+  if (isRunning) return;
+  const question = document.getElementById('question').value.trim();
+  const apiKey = localStorage.getItem('council_api_key');
+  const model = localStorage.getItem('council_model') || 'claude-sonnet-4-6';
+  if (!question) return;
+  if (!apiKey) { expandSetup(); showError('Please enter and save your Anthropic API key first.'); return; }
+  hideError();
+  isRunning = true;
+  rawText = '';
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div><span>Thinking…</span>';
+  document.getElementById('output-label').textContent =
+    (mode === 'full' ? 'Full council' : 'Quick council') + ' · ' + model.replace('claude-', '').replace('-20251001', '');
+  showOutput();
+  renderOutput('', true);
+  const systemPrompt = mode === 'full' ? FULL_PROMPT : QUICK_PROMPT;
+  try {
+    for await (const chunk of streamMessages(question, systemPrompt, apiKey, model)) {
+      rawText += chunk;
+      renderOutput(rawText, true);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    renderOutput(rawText, false);
+  } catch (err) {
+    renderOutput(rawText, false);
+    showError(err.message || 'Something went wrong. Check your API key and try again.');
+  } finally {
+    isRunning = false;
+    btn.disabled = false;
+    btn.innerHTML = '<span id="btn-label">Convene council</span>';
+  }
+}
+</script>
+</body>
+</html>
